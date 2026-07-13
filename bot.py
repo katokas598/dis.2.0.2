@@ -22,11 +22,12 @@ IGNORED_CHANNEL_IDS: list[int] = []
 # Если логирование не нужно, оставьте 0.
 STAFF_LOG_CHANNEL_ID = 0
 
-# Если ID роли общей верификации неизвестен, оставьте 0 - бот создаст роль сам.
+# Укажите ID роли общей верификации.
+# Если оставить 0, бот попробует найти роль по имени VERIFIED_ROLE_NAME.
 VERIFIED_ROLE_ID = 0
 
 # Имя роли, которую бот создаст для доступа к обычным каналам.
-VERIFIED_ROLE_NAME = "Верифицирован"
+VERIFIED_ROLE_NAME = "𝐕𝐞𝐫𝐢𝐟𝐢𝐞𝐝"
 
 # Бот создаст канал с таким именем, если его нет.
 WELCOME_CHANNEL_NAME = "добро-пожаловать"
@@ -36,17 +37,18 @@ WELCOME_CHANNEL_NAME = "добро-пожаловать"
 PROTECTED_CHANNEL_IDS: list[int] = []
 PROTECTED_CATEGORY_IDS: list[int] = []
 
-# Если ID ранговых ролей неизвестны, оставьте 0 - бот создаст роли сам.
+# Вставьте сюда ID уже существующих ранговых ролей на сервере.
+# Бот не будет создавать ранговые роли автоматически.
 RANK_ROLE_IDS = {
-    "Железо": 0,
-    "Бронза": 0,
-    "Серебро": 0,
-    "Золото": 0,
-    "Платина": 0,
-    "Алмаз": 0,
-    "Восхождение": 0,
-    "Бессмертный": 0,
-    "Радиант": 0,
+    "𝐈𝐫𝐨𝐧": 0,
+    "𝐁𝐫𝐨𝐧𝐳𝐞": 0,
+    "𝐒𝐢𝐥𝐯𝐞𝐫": 0,
+    "𝐆𝐨𝐥𝐝": 0,
+    "𝐏𝐥𝐚𝐭𝐢𝐧𝐮𝐦": 0,
+    "𝐃𝐢𝐚𝐦𝐨𝐧𝐝": 0,
+    "𝐀𝐬𝐜𝐞𝐧𝐝𝐚𝐧𝐭": 0,
+    "𝐈𝐦𝐦𝐨𝐫𝐭𝐚𝐥": 0,
+    "𝐑𝐚𝐝𝐢𝐚𝐧𝐭": 0,
 }
 
 RANK_OPTIONS = list(RANK_ROLE_IDS.keys())
@@ -151,27 +153,8 @@ class ValorantVerificationBot(commands.Bot):
 
     async def ensure_guild_resources(self, guild: discord.Guild) -> None:
         verified_role = await self.ensure_verified_role(guild)
-        await self.ensure_rank_roles(guild)
         await self.ensure_welcome_channel(guild, verified_role)
         await self.configure_general_channel_access(guild, verified_role)
-
-    async def ensure_rank_roles(self, guild: discord.Guild) -> None:
-        for rank_name in RANK_OPTIONS:
-            configured_role_id = self.rank_role_ids.get(rank_name, 0)
-            role = guild.get_role(configured_role_id) if configured_role_id else None
-
-            if role is None:
-                role = discord.utils.get(guild.roles, name=rank_name)
-
-            if role is None:
-                role = await guild.create_role(
-                    name=rank_name,
-                    mentionable=False,
-                    reason="Создание ранговой роли Valorant",
-                )
-                logger.info("Создана ранговая роль %s (%s)", role.name, role.id)
-
-            self.rank_role_ids[rank_name] = role.id
 
     async def ensure_verified_role(self, guild: discord.Guild) -> discord.Role:
         if self.verified_role_id:
@@ -351,16 +334,11 @@ class ValorantVerificationBot(commands.Bot):
     def get_rank_role(self, guild: discord.Guild, rank_name: str) -> Optional[discord.Role]:
         role_id = self.rank_role_ids.get(rank_name, 0)
         if not role_id:
-            role = discord.utils.get(guild.roles, name=rank_name)
-            if role is not None:
-                self.rank_role_ids[rank_name] = role.id
-            return role
+            return discord.utils.get(guild.roles, name=rank_name)
 
         role = guild.get_role(role_id)
         if role is None:
-            role = discord.utils.get(guild.roles, name=rank_name)
-            if role is not None:
-                self.rank_role_ids[rank_name] = role.id
+            return discord.utils.get(guild.roles, name=rank_name)
 
         return role
 
@@ -417,7 +395,7 @@ class ValorantVerificationBot(commands.Bot):
                     result_lines.append("Не удалось выдать роль ранга из-за ошибки Discord API.")
         else:
             result_lines.append(
-                "Не удалось найти или создать роль для выбранного ранга. Проверьте права бота на управление ролями."
+                "Не удалось найти роль для выбранного ранга. Проверьте RANK_ROLE_IDS или точное имя существующей роли."
             )
 
         verified_role = self.get_verified_role(member.guild)
